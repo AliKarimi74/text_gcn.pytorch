@@ -139,7 +139,7 @@ def load_corpus(dataset_str):
     names = ['x', 'y', 'tx', 'ty', 'allx', 'ally', 'adj']
     objects = []
     for i in range(len(names)):
-        with open("./data/ind.{}.{}".format(dataset_str, names[i]), 'rb') as f:
+        with open("data/ind.{}.{}".format(dataset_str, names[i]), 'rb') as f:
             if sys.version_info > (3, 0):
                 objects.append(pkl.load(f, encoding='latin1'))
             else:
@@ -152,8 +152,7 @@ def load_corpus(dataset_str):
     labels = np.vstack((ally, ty))
     # print(len(labels))
 
-    train_idx_orig = parse_index_file(
-        "./data/{}.train.index".format(dataset_str))
+    train_idx_orig = parse_index_file("data/{}.train.index".format(dataset_str))
     train_size = len(train_idx_orig)
 
     val_size = train_size - x.shape[0]
@@ -174,6 +173,7 @@ def load_corpus(dataset_str):
     y_val[val_mask, :] = labels[val_mask, :]
     y_test[test_mask, :] = labels[test_mask, :]
 
+    # to force symmetry in adjacency matrix
     adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)
 
     return adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask, train_size, test_size
@@ -201,6 +201,7 @@ def sparse_to_tuple(sparse_mx):
 
 def preprocess_features(features):
     """Row-normalize feature matrix and convert to tuple representation"""
+    # convert features so all rows have save magnitude.
     rowsum = np.array(features.sum(1))
     r_inv = np.power(rowsum, -1).flatten()
     r_inv[np.isinf(r_inv)] = 0.
@@ -212,8 +213,9 @@ def preprocess_features(features):
 
 def normalize_adj(adj):
     """Symmetrically normalize adjacency matrix."""
+    # compute A' = D^(-0.5) A D^(-0.5)
     adj = sp.coo_matrix(adj)
-    rowsum = np.array(adj.sum(1))
+    rowsum = np.array(adj.sum(1))   # degree matrix
     d_inv_sqrt = np.power(rowsum, -0.5).flatten()
     d_inv_sqrt[np.isinf(d_inv_sqrt)] = 0.
     d_mat_inv_sqrt = sp.diags(d_inv_sqrt)
